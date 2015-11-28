@@ -16,61 +16,41 @@
 
         <script type="text/ng-template" id="/home.html">
             <div class="page-header">
-                    <h1>Flapper News</h1>
+                    <h1>BGG Collection Ranking</h1>
                 </div>
 
-                <div ng-repeat="post in posts | orderBy: '-upvotes'">
-                    <span class="glyphicon glyphicon-thumbs-up" ng-click="incrementUpvotes(post)"></span>
-                    {{post.upvotes}}
+                <div ng-repeat="run in runs | orderBy: 'username'">
+                    {{run.username}}
                     <span style="font-size:20px; margin-left:10px;">
-                        <a ng-show="post.link" href="{{post.link}}">
-                            {{post.title}}
-                        </a>
-                        <span ng-hide="post.link">
-                            {{post.title}}
-                        </span>
-                    </span>
-                    <span>
-                        <a href="#/posts/{{post._id}}">Comments</a>
+                        <a href="#/runs/{{run._id}}">{{run.description}}</a>
                     </span>
                 </div>
 
-                <form ng-submit="addPost()" style="margin-top:30px;">
-                    <h3>Add a new post</h3>
+                <form ng-submit="addRun()" style="margin-top:30px;">
+                    <h3>Start a new run</h3>
 
                     <div class="form-group">
                         <input type="text" 
                         class="form-control"
-                        placeholder="Title" 
-                        ng-model="title"></input>
+                        placeholder="BGG Username" 
+                        ng-model="bggUser"></input>
                     </div>
                     <div class="form-group">
                         <input type="text" 
                         class="form-control"
-                        placeholder="Link" 
-                        ng-model="link"></input>
+                        placeholder="Run Description" 
+                        ng-model="description"></input>
                     </div>
-                    <button type="submit" class="btn btn-primary">Post</button>
+                    <button type="submit" class="btn btn-primary">Start!</button>
                 </form>
         </script>
-        <script type="text/ng-template" id="/posts.html">
+        <script type="text/ng-template" id="/runs.html">
             <div class="page-header">
-                <h3>
-                    <a ng-show="post.link" href="{{post.link}}">
-                        {{post.title}}
-                    </a>
-                    <span ng-hide="post.link">
-                        {{post.title}}
-                    </span>
-                </h3>
+                <h3>{{run.description}}</h3>
             </div>
 
-            <div ng-repeat="comment in post.comments | orderBy:'-upvotes'">
-                <span class="glyphicon glyphicon-thumbs-up" ng-click="incrementUpvotes(comment)"></span>
-                {{comment.upvotes}} - by {{comment.author}}
-                <span style="font-size:20px; margin-left:10px;">
-                    {{comment.body}}
-                </span>
+            <div>
+                <span>Game Here eventually!!</span>
             </div>
 
             <form ng-submit="addComment()" style="margin-top:30px;">

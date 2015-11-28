@@ -44,13 +44,39 @@ app.factory('posts', ['$http', function($http) {
     return o;
 }]);
 
+app.factory('runs', ['$http', function($http) {
+    var o = {
+        runs: []
+    };
+
+    o.getAll = function() {
+        return $http.get('/runs').success(function(data) {
+            angular.copy(data, o.runs);
+        });
+    };
+
+    o.create = function(run) {
+        return $http.post('/runs', run).success(function(data) {
+            o.runs.push(data);
+        });
+    };
+
+    o.get = function(id) {
+        return $http.get('/runs/' + id).then(function(res) {
+            return res.data;
+        });
+    };
+
+    return o;
+}]);
+
 app.controller('MainCtrl', [
 '$scope',
 'posts',
-function($scope, posts){
-    $scope.test = 'Hello World!';
-
+'runs',
+function($scope, posts, runs){
     $scope.posts = posts.posts;
+    $scope.runs = runs.runs;
 
     $scope.addPost = function() {
         if(!$scope.title || $scope.title === '') {return; }
@@ -60,6 +86,21 @@ function($scope, posts){
         });
         $scope.title = '';
         $scope.link = '';
+    };
+
+    $scope.addRun = function() {
+        if(!$scope.bggUser || 
+            $scope.bggUser === '' || 
+            !$scope.description || 
+            $scope.description === '') { return; }
+        runs.create({
+            status: 'Open',
+            username: $scope.bggUser,
+            bggLink: 'http://www.boardgamegeek.com/xmlapi2/collection?username=' + $scope.bggUser + '&excludesubtype=boardgameexpansion',
+            description: $scope.description
+        });
+        $scope.bggUser = '';
+        $scope.description = '';
     };
 
     $scope.incrementUpvotes = function(post) {
@@ -90,6 +131,15 @@ function($scope, posts, post){
     };
 }]);
 
+app.controller('RunsCtrl', [
+'$scope',
+'runs',
+'run',
+function($scope, runs, run) {
+    $scope.run = run;
+    $scope.runs = runs;
+}]);
+
 app.config([
 '$stateProvider',
 '$urlRouterProvider',
@@ -101,20 +151,20 @@ function($stateProvider, $urlRouterProvider) {
             templateUrl: '/home.html',
             controller: 'MainCtrl',
             resolve: {
-                postPromise: ['posts', function(posts) {
-                    return posts.getAll();
+                postPromise: ['runs', function(runs) {
+                    return runs.getAll();
                 }]
             }
         });
 
     $stateProvider
-        .state('posts', {
-            url: '/posts/{id}',
-            templateUrl: '/posts.html',
-            controller: 'PostsCtrl',
+        .state('runs', {
+            url: '/runs/{id}',
+            templateUrl: '/runs.html',
+            controller: 'RunsCtrl',
             resolve: {
-                post: ['$stateParams', 'posts', function($stateParams, posts) {
-                    return posts.get($stateParams.id);
+                post: ['$stateParams', 'runs', function($stateParams, runs) {
+                    return runs.get($stateParams.id);
                 }]
             }
         });
