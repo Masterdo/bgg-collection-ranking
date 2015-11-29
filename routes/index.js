@@ -21,7 +21,27 @@ router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
 
-router.get('/runs', function(req,res,next) {
+router.put('/rankings/:ranking/win/:score', function(req, res, next) {
+    console.log('Trying to win..');
+    req.ranking.win(req.score, function(err, ranking) {
+        if (err) { return next(err); }
+
+        console.log('Score increased by: ' + req.score);
+        res.json(ranking);
+    });
+});
+
+router.put('/rankings/:ranking/lose/:score', function(req, res, next) {
+    console.log('Trying to lose..');
+    req.ranking.lose(req.score, function(err, ranking) {
+        if (err) { return next(err); }
+
+        console.log('Score dropped by: ' + req.score);
+        res.json(ranking);
+    });
+});
+
+router.get('/runs', function(req, res, next) {
     Run.find(function(err, runs){
         if(err){ return next(err); }
 
@@ -29,114 +49,114 @@ router.get('/runs', function(req,res,next) {
     });
 });
 
-router.get('/runs/:run', function(req, res) {
-    req.run.populate('comments', function(err, run) {
-        if (err) { return next(err); }
+router.get('/runs/:run', function(req, res, next) {
+    req.run.populate('rankings', function(err, run) {
 
-        res.json(req.run);
+        var populateTasks = [];
+        async.each(run.rankings, function(ranking, forCallback) {
+            populateTasks.push(function(saveCallback){
+                ranking.populate('game', function(err, ranking) {
+                    saveCallback();
+                    forCallback();
+                });
+            });
+        });
+
+        async.parallel(populateTasks, function(err) {
+            if(err){ return next(err); }
+
+            res.json(run);
+        });
     });
 });
 
 router.post('/runs', function(req, res, next) {
-    var run = new Run(req.body);
     var games = [];
-    var rankings = [];
+    var savedGames = [];
+    var run = new Run(req.body);
 
-    tryUntilSuccess(run.bggLink, function(err, jsonGames) {
-        if(err){ return next(err); }
-
-        var gameTasks = [];
-
-        for (index in jsonGames.items.item){
-            var gameEntry = jsonGames.items.item[index];
-            var isOwned = gameEntry.status[0].$.own;
-            if (isOwned === '1'){
-                var game = new Game({
-                    bggId: gameEntry.$.objectid,
-                    gameName: gameEntry.name,
-                    thumbnail: gameEntry.thumbnail[0],
-                    image: gameEntry.image[0]
-                });
-                gameTasks.push(function(callback){
+    /*
+        Sequence of events to:
+            - Load Games from BGG
+            - Persist them in DB if they are new to us
+            - Initialize rankings
+            - Save the run
+    */
+    async.waterfall([
+        function(callback) {
+            // first, load game collection data from BGG
+            tryUntilSuccess(run.bggLink, function(err, jsonGames) {
+                for (index in jsonGames.items.item){
+                    var gameEntry = jsonGames.items.item[index];
+                    var isOwned = gameEntry.status[0].$.own;
+                    if (isOwned === '1'){
+                        var game = new Game({
+                            bggId: gameEntry.$.objectid,
+                            name: gameEntry.name[0]._,
+                            thumbnail: gameEntry.thumbnail[0],
+                            image: gameEntry.image[0]
+                        });
+                        games.push(game);
+                    }
+                }
+                callback(null);
+            });
+        },
+        function(callback) {
+            // Save games in DB if they don't exist already
+            console.log('Loaded Games: ' + games.length);
+            var gameSaveTasks = [];
+            async.each(games, function(game, forCallback) {
+                gameSaveTasks.push(function(saveCallback){
                     getOrSaveGame(game, function(err, gameFromDb) {
-                        games.push(gameFromDb);
-                        callback();
+                        savedGames.push(gameFromDb);
+                        saveCallback();
+                        forCallback();
                     });
                 });
-            }
-        }
+            });
 
-        async.parallel(gameTasks, function() {
-            console.dir('Games saved!');
-            console.log(games.length);
-            var rankingTasks = [];
-
-            for (game in games) {
-                var ranking = new Ranking({game: game});
-                rankingTasks.push(function(callback){
+            async.parallel(gameSaveTasks, function() {
+                callback(null);
+            });
+        },
+        function(callback) {
+            // create rankings and load them in the run
+            console.log('Saved Games: ' + savedGames.length);
+            var rankingSaveTasks = [];
+            async.each(savedGames, function(game, forCallback) {
+                rankingSaveTasks.push(function(saveCallback){
+                    var ranking = new Ranking({game: game});
                     ranking.save(function(err, savedRanking) {
-                        rankings.push(savedRanking);
-                        callback();
+                        run.rankings.push(savedRanking);
+                        saveCallback();
+                        forCallback();
                     });
                 });
-            }
+            });
 
-            async.parallel(rankingTasks, function() {
-                console.dir('Rankings saved!');
-                console.log(rankings.length)
-
-                run.status = 'Ready';
-                run.rankings = rankings;
-
+            async.parallel(rankingSaveTasks, function() {
+                callback(null);
+            });
+        },
+        function(callback) {
+            // save the run
+            var runSaveTask = [];
+            run.status = 'Ready';
+            runSaveTask.push(function(runCallback){
                 run.save(function(err, savedRun) {
-                    if(err){ return next(err); }
+                    runCallback();
+                });
+            });
 
-                    res.json(run);
-                })
-            });            
-        });
-    }); 
-});
+            async.parallel(runSaveTask, function() {
+                callback(null);
+            });
 
-router.get('/posts', function(req, res, next) {
-    Post.find(function(err, posts){
-        if(err){ return next(err); }
-
-        res.json(posts);
-    });
-});
-
-router.post('/posts', function(req, res, next) {
-    var post = new Post(req.body);
-
-    post.save(function(err, post){
-        if(err){ return next(err); }
-
-        res.json(post);
-    });
-});
-
-router.param('post', function(req, res, next, id) {
-    var query = Post.findById(id);
-
-    query.exec(function (err, post) {
-        if(err) { return next(err); }
-        if(!post) { return next(new Error('can\'t find post')); }
-
-        req.post = post;
-        return next();
-    });
-});
-
-router.param('comment', function(req, res, next, id) {
-    var query = Comment.findById(id);
-
-    query.exec(function (err, comment) {
-        if(err) { return next(err); }
-        if(!comment) { return next(new Error('can\'t find comment')); }
-
-        req.comment = comment;
-        return next();
+        }
+    ], function(err){    
+        if (err) { return next(err); }
+        res.json(run);
     });
 });
 
@@ -176,44 +196,9 @@ router.param('ranking', function(req, res, next, id) {
     });
 });
 
-router.get('/posts/:post', function(req, res) {
-    req.post.populate('comments', function(err, post) {
-        if (err) { return next(err); }
-
-        res.json(req.post);
-    });
-});
-
-router.put('/posts/:post/upvote', function(req, res, next) {
-    req.post.upvote(function(err, post) {
-        if (err) { return next(err); }
-
-        res.json(post);
-    });
-});
-
-router.post('/posts/:post/comments', function(req, res, next) {
-    var comment = new Comment(req.body);
-    comment.post = req.post;
-
-    comment.save(function(err, comment) {
-        if (err) { return next(err); }
-
-        req.post.comments.push(comment);
-        req.post.save(function(err, post) {
-            if (err) { return next(err); }
-
-            res.json(comment);
-        });
-    });
-});
-
-router.put('/posts/:post/comments/:comment/upvote', function(req, res, next) {
-    req.comment.upvote(function(err, comment) {
-        if (err) { return next(err); }
-
-        res.json(comment);
-    });
+router.param('score', function(req, res, next, score) {
+    req.score = score;
+    return next();
 });
 
 function tryUntilSuccess(url, callback){
@@ -239,7 +224,6 @@ function tryUntilSuccess(url, callback){
 }
 
 function getOrSaveGame(game, cb){
-    var resGame = null;
     Game.find({bggId: game.bggId}, function(err, results){
         if (err) { cb(err); }
         

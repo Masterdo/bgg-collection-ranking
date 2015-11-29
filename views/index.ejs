@@ -46,24 +46,35 @@
         </script>
         <script type="text/ng-template" id="/runs.html">
             <div class="page-header">
+                <span style="font-size:20px; margin-left:10px;">
+                        <a href="#/home">Back to listing</a>
+                </span>
                 <h3>{{run.description}}</h3>
+                <span>Games faceoff</span>
+                <a href="#/runResults/{{run._id}}">Results</a>
             </div>
 
             <div>
-                <span>Game Here eventually!!</span>
+                <img ng-src="{{ranking1.game.thumbnail}}" alt="Game 1" ng-click="postResult(ranking1, ranking2)"/>
+
+                <span>VS</span>
+
+                <img ng-src="{{ranking2.game.thumbnail}}" alt="Game 2" ng-click="postResult(ranking2, ranking1)"/>
+            </div>
+        </script>
+        <script type="text/ng-template" id="/runResults.html">
+            <div class="page-header">
+                <span style="font-size:20px; margin-left:10px;">
+                        <a href="#/home">Back to listing</a>
+                </span>
+                <h3>{{run.description}}</h3>
+                <a href= "#/runs/{{run._id}}">Games faceoff</a>
+                <span>Results</span>
             </div>
 
-            <form ng-submit="addComment()" style="margin-top:30px;">
-                <h3>Add a new comment</h3>
-
-                <div class="form-group">
-                    <input type="text" 
-                    class="form-control" 
-                    placeholder="Comment"
-                    ng-model="body"></input>
-                </div>
-                <button type="submit" class="btn btn-primary">Post</button>
-            </form>
+            <div ng-repeat="ranking in run.rankings | orderBy: '-score'">
+                {{ranking.score}} - {{ranking.game.name}}
+            </div>
         </script>
     </body>
 </html>

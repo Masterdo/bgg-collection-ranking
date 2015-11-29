@@ -1,49 +1,5 @@
 var app = angular.module('flapperNews', ['ui.router']);
 
-app.factory('posts', ['$http', function($http) {
-    var o = {
-        posts: []
-    };
-
-    o.getAll = function() {
-        return $http.get('/posts').success(function(data) {
-            angular.copy(data, o.posts);
-        });
-    };
-
-    o.create = function(post) {
-        return $http.post('/posts', post).success(function(data) {
-            o.posts.push(data);
-        });
-    };
-
-    o.upvote = function(post) {
-        return $http.put('/posts/' + post._id + '/upvote')
-            .success(function(data) {
-                post.upvotes += 1;
-            });
-    };
-
-    o.get = function(id) {
-        return $http.get('/posts/' + id).then(function(res) {
-            return res.data;
-        });
-    };
-
-    o.addComment = function(id, comment) {
-        return $http.post('/posts/' + id + '/comments', comment);
-    };
-
-    o.upvoteComment = function(post, comment) {
-        return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote')
-            .success(function(data) {
-                comment.upvotes += 1;
-            });
-    };
-
-    return o;
-}]);
-
 app.factory('runs', ['$http', function($http) {
     var o = {
         runs: []
@@ -67,26 +23,42 @@ app.factory('runs', ['$http', function($http) {
         });
     };
 
+    o.getRanking = function(run, id) {
+        return $http.get('/runs/' + run._id + '/rankings/' + id).then(function(res) {
+            return res.data;
+        });
+    };
+
+    o.getGame = function(run, ranking, id) {
+        return $http.get('/runs/' + run._id + '/rankings/' + ranking._id + '/games/' + id).then(function(res) {
+            return res.data;
+        });
+    };
+
+    o.updateWinningRanking = function(ranking, scoreChange) {
+        console.log('hey...');
+        return $http.put('/rankings/' + ranking._id + '/win/' + scoreChange).then(function(res) {
+            ranking.score = res.score;
+            return res.data;
+        });
+    };
+
+    o.updateLosingRanking = function(ranking, scoreChange) {
+        console.log('hey...');
+        return $http.put('/rankings/' + ranking._id + '/lose/' + scoreChange).then(function(res) {
+            ranking.score = res.score;
+            return res.data;
+        });
+    };
+
     return o;
 }]);
 
 app.controller('MainCtrl', [
 '$scope',
-'posts',
 'runs',
-function($scope, posts, runs){
-    $scope.posts = posts.posts;
+function($scope, runs){
     $scope.runs = runs.runs;
-
-    $scope.addPost = function() {
-        if(!$scope.title || $scope.title === '') {return; }
-        posts.create({
-            title: $scope.title,
-            link: $scope.link
-        });
-        $scope.title = '';
-        $scope.link = '';
-    };
 
     $scope.addRun = function() {
         if(!$scope.bggUser || 
@@ -102,33 +74,6 @@ function($scope, posts, runs){
         $scope.bggUser = '';
         $scope.description = '';
     };
-
-    $scope.incrementUpvotes = function(post) {
-        posts.upvote(post);
-    };
-}]);
-
-app.controller('PostsCtrl', [
-'$scope',
-'posts',
-'post',
-function($scope, posts, post){
-    $scope.post = post;
-
-    $scope.addComment = function() {
-        if ($scope.body ==='') { return; }
-        posts.addComment(post._id, {
-            body: $scope.body,
-            author: 'user'
-        }).success(function(comment) {
-            $scope.post.comments.push(comment);
-        });
-        $scope.body = '';
-    };
-
-    $scope.incrementUpvotes = function(comment) {
-        posts.upvoteComment(post, comment);
-    };
 }]);
 
 app.controller('RunsCtrl', [
@@ -137,7 +82,31 @@ app.controller('RunsCtrl', [
 'run',
 function($scope, runs, run) {
     $scope.run = run;
-    $scope.runs = runs;
+
+    var getMatch = function() {
+
+        var index1 = Math.floor(Math.random()*run.rankings.length);
+        var index2 = 0;
+        do {
+            index2 = Math.floor(Math.random()*run.rankings.length);
+        } while (index1 === index2);
+        $scope.ranking1 = run.rankings[index1];
+        $scope.ranking2 = run.rankings[index2];
+    };
+
+    $scope.postResult = function(winner, loser) {
+
+        console.log('Winner:' + winner.game.name);
+        console.log('Loser:' + loser.game.name);
+        runs.updateWinningRanking(winner, 50);
+        runs.updateLosingRanking(loser, 50);
+
+        getMatch();
+    }
+
+    $scope.getMatch = getMatch;
+
+    getMatch();
 }]);
 
 app.config([
@@ -163,7 +132,19 @@ function($stateProvider, $urlRouterProvider) {
             templateUrl: '/runs.html',
             controller: 'RunsCtrl',
             resolve: {
-                post: ['$stateParams', 'runs', function($stateParams, runs) {
+                run: ['$stateParams', 'runs', function($stateParams, runs) {
+                    return runs.get($stateParams.id);
+                }]
+            }
+        });
+
+    $stateProvider
+        .state('runResults', {
+            url: '/runResults/{id}',
+            templateUrl: '/runResults.html',
+            controller: 'RunsCtrl',
+            resolve: {
+                run: ['$stateParams', 'runs', function($stateParams, runs) {
                     return runs.get($stateParams.id);
                 }]
             }
