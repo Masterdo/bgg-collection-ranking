@@ -11,8 +11,6 @@ var users = require('./routes/users');
 var cfg = require('./config/env/development');
 
 var mongoose = require('mongoose');
-require('./models/Posts');
-require('./models/Comments');
 require('./models/Games');
 require('./models/Rankings');
 require('./models/Runs');

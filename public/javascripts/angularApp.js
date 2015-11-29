@@ -1,4 +1,4 @@
-var app = angular.module('flapperNews', ['ui.router']);
+var app = angular.module('bgg-collection-ranking', ['ui.router']);
 
 app.factory('runs', ['$http', function($http) {
     var o = {
@@ -44,7 +44,6 @@ app.factory('runs', ['$http', function($http) {
     };
 
     o.updateLosingRanking = function(ranking, scoreChange) {
-        console.log('hey...');
         return $http.put('/rankings/' + ranking._id + '/lose/' + scoreChange).then(function(res) {
             ranking.score = res.score;
             return res.data;
@@ -95,11 +94,8 @@ function($scope, runs, run) {
     };
 
     $scope.postResult = function(winner, loser) {
-
-        console.log('Winner:' + winner.game.name);
-        console.log('Loser:' + loser.game.name);
-        runs.updateWinningRanking(winner, 50);
-        runs.updateLosingRanking(loser, 50);
+        runs.updateWinningRanking(winner, 5);
+        runs.updateLosingRanking(loser, 5);
 
         getMatch();
     }

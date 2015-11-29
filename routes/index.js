@@ -2,13 +2,9 @@ var express = require('express');
 var router = express.Router();
 var mongoose = require('mongoose');
 var parseString = require('xml2js').parseString;
-require('../models/Posts');
-require('../models/Comments');
 require('../models/Games');
 require('../models/Runs');
 require('../models/Rankings');
-var Post = mongoose.model('Post');
-var Comment = mongoose.model('Comment');
 var Game = mongoose.model('Game');
 var Run = mongoose.model('Run');
 var Ranking = mongoose.model('Ranking');
@@ -26,7 +22,6 @@ router.put('/rankings/:ranking/win/:score', function(req, res, next) {
     req.ranking.win(req.score, function(err, ranking) {
         if (err) { return next(err); }
 
-        console.log('Score increased by: ' + req.score);
         res.json(ranking);
     });
 });
@@ -36,7 +31,6 @@ router.put('/rankings/:ranking/lose/:score', function(req, res, next) {
     req.ranking.lose(req.score, function(err, ranking) {
         if (err) { return next(err); }
 
-        console.log('Score dropped by: ' + req.score);
         res.json(ranking);
     });
 });
@@ -104,7 +98,6 @@ router.post('/runs', function(req, res, next) {
         },
         function(callback) {
             // Save games in DB if they don't exist already
-            console.log('Loaded Games: ' + games.length);
             var gameSaveTasks = [];
             async.each(games, function(game, forCallback) {
                 gameSaveTasks.push(function(saveCallback){
@@ -122,7 +115,6 @@ router.post('/runs', function(req, res, next) {
         },
         function(callback) {
             // create rankings and load them in the run
-            console.log('Saved Games: ' + savedGames.length);
             var rankingSaveTasks = [];
             async.each(savedGames, function(game, forCallback) {
                 rankingSaveTasks.push(function(saveCallback){
