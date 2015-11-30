@@ -40,7 +40,9 @@ router.post('/register', function(req, res, next) {
     var user = new User();
 
     user.username = req.body.username;
+    user.displayName = req.body.username;
     user.setPassword(req.body.password);
+    user.provider = 'local';
 
     user.save(function(err) {
         if (err) { return next(err); }
@@ -81,6 +83,16 @@ router.get('/runs', function(req, res, next) {
     });
 });
 
+router.get('/users/:user', function(req, res, next) {
+    var user = new User();
+    user._id =  req.user._id;
+    user.displayName = req.user.displayName;
+    console.log('user ' + user);
+    var token = user.generateJWT();
+    console.log('token ' + token);
+    res.json(token);
+});
+
 router.get('/runs/:run', function(req, res, next) {
     req.run.populate('rankings', function(err, run) {
 
@@ -106,7 +118,7 @@ router.post('/runs', auth, function(req, res, next) {
     var games = [];
     var savedGames = [];
     var run = new Run(req.body);
-    run.owner = req.payload.username;
+    run.owner = req.payload.displayName;
 
     /*
         Sequence of events to:
@@ -230,6 +242,18 @@ router.param('ranking', function(req, res, next, id) {
 router.param('score', function(req, res, next, score) {
     req.score = score;
     return next();
+});
+
+router.param('user', function(req, res, next, id) {
+    var query = User.findById(id);
+
+    query.exec(function(err, user) {
+        if (err) { return next(err); }
+        if (!user) { return next(new Error('can\'t find user')); }
+
+        req.user = user;
+        return next();
+    });
 });
 
 function tryUntilSuccess(url, callback){

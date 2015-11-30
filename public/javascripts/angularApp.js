@@ -72,9 +72,8 @@ app.factory('auth', ['$http', '$window', function($http, $window) {
     auth.isLoggedIn = function() {
         var token = auth.getToken();
 
-        if (token) {
+        if (token && token != 'undefined') {
             var payload = JSON.parse($window.atob(token.split('.')[1]));
-
             return payload.exp > Date.now() / 1000;
         } else {
             return false;
@@ -86,12 +85,12 @@ app.factory('auth', ['$http', '$window', function($http, $window) {
             var token = auth.getToken();
             var payload = JSON.parse($window.atob(token.split('.')[1]));
 
-            return payload.username;
+            return payload.displayName;
         }
     };
 
     auth.register = function(user) {
-        return $http.post('/register', user). success(function(data) {
+        return $http.post('/register', user).success(function(data) {
             auth.saveToken(data.token);
         })
     };
@@ -104,6 +103,12 @@ app.factory('auth', ['$http', '$window', function($http, $window) {
 
     auth.logOut = function() {
         $window.localStorage.removeItem('bgg-collection-ranking-token');
+    };
+
+    auth.logInFromGoogle = function(userId) {
+        return $http.get('/users/' + userId).success(function(data) {
+            auth.saveToken(data);
+        });
     };
 
     return auth;
@@ -261,6 +266,26 @@ function($stateProvider, $urlRouterProvider) {
                     $state.go('home');
                 }
             }]
+        });
+
+    $stateProvider
+        .state('fromGoogle', {
+            url: '/fromGoogle/:userId',
+            templateUrl: '/home.html',
+            onEnter: ['$state', '$stateParams', 'auth', function($state, $stateParams, auth) {
+                auth.logInFromGoogle($stateParams.userId);
+                $state.go('home');
+            }]
+        });
+
+    $stateProvider
+        .state('google', {
+            url: '/auth/google'
+        });
+
+    $stateProvider
+        .state('googleCallback', {
+            url: '/auth/google/callback'
         });
     
     $urlRouterProvider.otherwise('home');

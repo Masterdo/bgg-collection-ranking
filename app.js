@@ -5,6 +5,7 @@ var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var passport = require('passport');
+var GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
@@ -16,6 +17,7 @@ require('./models/Games');
 require('./models/Rankings');
 require('./models/Runs');
 require('./models/Users');
+var User = mongoose.model('User');
 
 require('./config/passport');
 
@@ -39,6 +41,20 @@ app.use(passport.initialize());
 
 app.use('/', routes);
 app.use('/users', users);
+
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile'] }),
+  function(req, res){
+    // The request will be redirected to Google for authentication, so this
+    // function will not be called.
+  });
+
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  function(req, res) {
+    res.redirect('/#/fromGoogle/' + '565bfbb533b60ce1c3585b29');
+    // res.redirect('/');
+  });
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
