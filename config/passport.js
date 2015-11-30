@@ -35,7 +35,7 @@ passport.use(new LocalStrategy(
 passport.use(new GoogleStrategy({
     clientID: cfg.googleClientId,
     clientSecret: cfg.googleClientSecret,
-    callbackURL: "http://localhost:3000/auth/google/callback"
+    callbackURL: cfg.googleClientCallback
   },
   function(accessToken, refreshToken, profile, done) {
     // asynchronous verification, for effect...
