@@ -4,6 +4,7 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var passport = require('passport');
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
@@ -14,6 +15,9 @@ var mongoose = require('mongoose');
 require('./models/Games');
 require('./models/Rankings');
 require('./models/Runs');
+require('./models/Users');
+
+require('./config/passport');
 
 mongoose.connect(cfg.db);
 
@@ -30,6 +34,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(passport.initialize());
 
 app.use('/', routes);
 app.use('/users', users);
@@ -65,5 +71,6 @@ app.use(function(err, req, res, next) {
   });
 });
 
+console.log(process.env.MONGO_URL);
 
 module.exports = app;

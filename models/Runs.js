@@ -5,6 +5,7 @@ var RunSchema = new mongoose.Schema({
     username: String,
     bggLink: String,
     description: String,
+    owner: String,// {type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     rankings: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Ranking' }]
 });
 

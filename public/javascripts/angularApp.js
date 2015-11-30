@@ -1,6 +1,6 @@
 var app = angular.module('bgg-collection-ranking', ['ui.router']);
 
-app.factory('runs', ['$http', function($http) {
+app.factory('runs', ['$http', 'auth', function($http, auth) {
     var o = {
         runs: []
     };
@@ -12,7 +12,9 @@ app.factory('runs', ['$http', function($http) {
     };
 
     o.create = function(run) {
-        return $http.post('/runs', run).success(function(data) {
+        return $http.post('/runs', run, {
+            headers: {Authorization: 'Bearer ' + auth.getToken()}
+        }).success(function(data) {
             o.runs.push(data);
         });
     };
@@ -36,15 +38,18 @@ app.factory('runs', ['$http', function($http) {
     };
 
     o.updateWinningRanking = function(ranking, scoreChange) {
-        console.log('hey...');
-        return $http.put('/rankings/' + ranking._id + '/win/' + scoreChange).then(function(res) {
+        return $http.put('/rankings/' + ranking._id + '/win/' + scoreChange, null, {
+            headers: {Authorization: 'Bearer ' + auth.getToken()}
+        }).then(function(res) {
             ranking.score = res.score;
             return res.data;
         });
     };
 
     o.updateLosingRanking = function(ranking, scoreChange) {
-        return $http.put('/rankings/' + ranking._id + '/lose/' + scoreChange).then(function(res) {
+        return $http.put('/rankings/' + ranking._id + '/lose/' + scoreChange, null, {
+            headers: {Authorization: 'Bearer ' + auth.getToken()}
+        }).then(function(res) {
             ranking.score = res.score;
             return res.data;
         });
@@ -53,11 +58,64 @@ app.factory('runs', ['$http', function($http) {
     return o;
 }]);
 
+app.factory('auth', ['$http', '$window', function($http, $window) {
+    var auth = {};
+
+    auth.saveToken = function(token) {
+        $window.localStorage['bgg-collection-ranking-token'] = token;
+    };
+
+    auth.getToken = function() {
+        return $window.localStorage['bgg-collection-ranking-token'];
+    };
+
+    auth.isLoggedIn = function() {
+        var token = auth.getToken();
+
+        if (token) {
+            var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+            return payload.exp > Date.now() / 1000;
+        } else {
+            return false;
+        }
+    };
+
+    auth.currentUser = function() {
+        if(auth.isLoggedIn()) {
+            var token = auth.getToken();
+            var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+            return payload.username;
+        }
+    };
+
+    auth.register = function(user) {
+        return $http.post('/register', user). success(function(data) {
+            auth.saveToken(data.token);
+        })
+    };
+
+    auth.logIn = function(user) {
+        return $http.post('/login', user).success(function(data) {
+            auth.saveToken(data.token);
+        });
+    };
+
+    auth.logOut = function() {
+        $window.localStorage.removeItem('bgg-collection-ranking-token');
+    };
+
+    return auth;
+}]);
+
 app.controller('MainCtrl', [
 '$scope',
+'auth',
 'runs',
-function($scope, runs){
+function($scope, auth, runs){
     $scope.runs = runs.runs;
+    $scope.isLoggedIn = auth.isLoggedIn;
 
     $scope.addRun = function() {
         if(!$scope.bggUser || 
@@ -77,10 +135,12 @@ function($scope, runs){
 
 app.controller('RunsCtrl', [
 '$scope',
+'auth',
 'runs',
 'run',
-function($scope, runs, run) {
+function($scope, auth, runs, run) {
     $scope.run = run;
+    $scope.isLoggedIn = auth.isLoggedIn;
 
     var getMatch = function() {
 
@@ -103,6 +163,39 @@ function($scope, runs, run) {
     $scope.getMatch = getMatch;
 
     getMatch();
+}]);
+
+app.controller('AuthCtrl', [
+'$scope',
+'$state',
+'auth',
+function($scope, $state, auth) {
+    $scope.user = {};
+
+    $scope.register = function() {
+        auth.register($scope.user).error(function(error) {
+            $scope.error = error;
+        }).then(function() {
+            $state.go('home');
+        });
+    };
+
+    $scope.logIn = function() {
+        auth.logIn($scope.user).error(function(error) {
+            $scope.error = error;
+        }).then(function() {
+            $state.go('home');
+        });
+    };
+}]);
+
+app.controller('NavCtrl', [
+'$scope',
+'auth',
+function($scope, auth) {
+    $scope.isLoggedIn = auth.isLoggedIn;
+    $scope.currentUser = auth.currentUser;
+    $scope.logOut = auth.logOut;
 }]);
 
 app.config([
@@ -144,6 +237,30 @@ function($stateProvider, $urlRouterProvider) {
                     return runs.get($stateParams.id);
                 }]
             }
+        });
+
+    $stateProvider
+        .state('login', {
+            url: '/login',
+            templateUrl: '/login.html',
+            controller: 'AuthCtrl',
+            onEnter: ['$state', 'auth', function($state, auth) {
+                if (auth.isLoggedIn()) {
+                    $state.go('home');
+                }
+            }]
+        });
+
+    $stateProvider
+        .state('register', {
+            url: '/register',
+            templateUrl: '/register.html',
+            controller: 'AuthCtrl',
+            onEnter: ['$state', 'auth', function($state, auth) {
+                if (auth.isLoggedIn()) {
+                    $state.go('home');
+                }
+            }]
         });
     
     $urlRouterProvider.otherwise('home');
