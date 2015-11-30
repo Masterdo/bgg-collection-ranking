@@ -7,12 +7,12 @@ var User = mongoose.model('User');
 var cfg = require('../config/env/development');
 
 passport.serializeUser(function(user, done) {
-        done(null, user.id);
+        done(null, user);
 });
 
 // used to deserialize the user
 passport.deserializeUser(function(id, done) {
-    User.findOne({username: 'troll'}, function(err, user) {
+    User.findOne({googleId: id}, function(err, user) {
         done(err, user);
     });
 });

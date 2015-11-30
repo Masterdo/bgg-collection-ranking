@@ -52,8 +52,8 @@ app.get('/auth/google',
 app.get('/auth/google/callback', 
   passport.authenticate('google', { failureRedirect: '/login' }),
   function(req, res) {
-    res.redirect('/#/fromGoogle/' + '565bfbb533b60ce1c3585b29');
-    // res.redirect('/');
+    req.user.googleId 
+    res.redirect('/#/fromGoogle/' + req.user.googleId);
   });
 
 // catch 404 and forward to error handler
@@ -86,7 +86,5 @@ app.use(function(err, req, res, next) {
     error: {}
   });
 });
-
-console.log(process.env.MONGO_URL);
 
 module.exports = app;

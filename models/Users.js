@@ -29,7 +29,6 @@ UserSchema.methods.generateJWT = function() {
     var exp = new Date(today);
 
     exp.setDate(today.getDate() + 60);
-    console.log('hey..');
 
     return jwt.sign({
         _id: this.id,

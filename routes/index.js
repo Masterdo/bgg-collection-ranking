@@ -87,9 +87,7 @@ router.get('/users/:user', function(req, res, next) {
     var user = new User();
     user._id =  req.user._id;
     user.displayName = req.user.displayName;
-    console.log('user ' + user);
     var token = user.generateJWT();
-    console.log('token ' + token);
     res.json(token);
 });
 
@@ -245,10 +243,11 @@ router.param('score', function(req, res, next, score) {
 });
 
 router.param('user', function(req, res, next, id) {
-    var query = User.findById(id);
 
-    query.exec(function(err, user) {
-        if (err) { return next(err); }
+    User.findOne({'provider': 'google', 'googleId': id}, function(err, user) {
+        if (err) {
+          return next(err);
+        }
         if (!user) { return next(new Error('can\'t find user')); }
 
         req.user = user;
