@@ -129,6 +129,14 @@ router.post('/runs', auth, function(req, res, next) {
         function(callback) {
             // first, load game collection data from BGG
             tryUntilSuccess(run.bggLink, function(err, jsonGames) {
+                console.dir(jsonGames);
+
+                if (jsonGames.errors) {
+                    return callback('Username doesn\'t exist on BGG');
+                }
+                if (jsonGames.items.$.totalitems === '0') {
+                    return callback('No collections available for this user.');
+                }
                 for (index in jsonGames.items.item){
                     var gameEntry = jsonGames.items.item[index];
                     var isOwned = gameEntry.status[0].$.own;
